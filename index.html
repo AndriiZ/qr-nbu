@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор QR-коду НБУ</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="validate.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- Privacy banner -->
+  <div id="privacy-banner">
+    <div class="banner-inner">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-shield"/></svg>
+      <p class="banner-text">
+        <strong>Конфіденційність:</strong> усі дані зберігаються виключно у вашому браузері (localStorage).
+        Жодна інформація не передається на сервер і не виходить за межі вашого пристрою.
+      </p>
+      <button class="banner-close" id="banner-close-btn" aria-label="Закрити">&times;</button>
+    </div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="nbu-logo" aria-hidden="true">НБУ</div>
+      <div>
+        <div class="topbar-title">Генератор QR-коду платежу</div>
+        <div class="topbar-sub">Кредитний переказ · стандарт НБУ BCD 002</div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main">
+
+    <!-- Recent IBANs -->
+    <div id="recents-wrap" aria-live="polite">
+      <div class="recents-label">
+        <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-clock"/></svg>
+        Нещодавні отримувачі
+      </div>
+      <div class="recents-chips" id="recents-chips"></div>
+    </div>
+
+    <div class="grid">
+
+      <!-- Form card -->
+      <div class="card">
+
+        <div class="sect">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-bank"/></svg>
+          Реквізити отримувача
+        </div>
+
+        <div class="field">
+          <label for="f-name">Отримувач<span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="f-name" placeholder="ПІБ ФОП або назва юридичної особи" autocomplete="organization">
+          <p class="hint">Повне найменування організації або ПІБ підприємця</p>
+        </div>
+
+        <div class="field">
+          <label for="f-iban">IBAN<span class="req" aria-hidden="true">*</span></label>
+          <div class="input-wrap">
+            <input type="text" id="f-iban" placeholder="UA213996220000026007233566001"
+                   maxlength="40" autocomplete="off" spellcheck="false">
+            <span class="field-status" id="status-iban" aria-live="polite"></span>
+          </div>
+          <p class="field-msg" id="msg-iban"></p>
+        </div>
+
+        <div class="field">
+          <label for="f-edrpou">
+            Код ЄДРПОУ / ІПН / паспорт<span class="req" aria-hidden="true">*</span>
+          </label>
+          <div class="input-wrap">
+            <input type="text" id="f-edrpou" placeholder="ЄДРПОУ (8), ІПН (10) або паспорт" autocomplete="off">
+            <span class="field-status" id="status-edrpou" aria-live="polite"></span>
+          </div>
+          <p class="field-msg" id="msg-edrpou"></p>
+        </div>
+
+        <div class="field">
+          <label for="f-amount">Сума<span class="opt">необов'язково</span></label>
+          <div class="amt-row">
+            <select id="f-currency" aria-label="Валюта">
+              <option value="UAH">UAH</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+            <input type="number" id="f-amount" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <p class="hint">Залиште порожнім — платник вкаже суму самостійно</p>
+        </div>
+
+        <div class="sect" style="margin-top: 18px;">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-list"/></svg>
+          Призначення платежу
+        </div>
+
+        <div class="field">
+          <label for="f-purpose">Призначення<span class="req" aria-hidden="true">*</span></label>
+          <textarea id="f-purpose" placeholder="Оплата за товари/послуги згідно договору №..."></textarea>
+        </div>
+
+        <button class="btn-generate" id="btn-generate">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+          Згенерувати QR-код
+        </button>
+
+        <details>
+          <summary>
+            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-code"/></svg>
+            Відкриті дані до кодування
+          </summary>
+          <pre class="raw-pre" id="raw-text">—</pre>
+        </details>
+
+      </div>
+
+      <!-- Result card -->
+      <div class="card result-card">
+
+        <div class="sect">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+          Результат
+        </div>
+
+        <div class="result-placeholder" id="result-placeholder">
+          <svg class="icon icon--placeholder" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+          <p>Заповніть форму та натисніть<br>«Згенерувати QR-код»</p>
+        </div>
+
+        <div id="result-content">
+
+          <div id="qr-wrap">
+            <div id="qr-container"></div>
+          </div>
+
+          <div class="deeplink-box">
+            <div class="deeplink-label">
+              <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-link"/></svg>
+              Deeplink / URL
+            </div>
+            <div class="deeplink-url" id="dl-text"></div>
+          </div>
+
+          <button class="btn-copy" id="btn-copy">
+            <svg class="icon" id="btn-copy-icon" aria-hidden="true"><use href="icons.svg#ic-copy"/></svg>
+            <span id="btn-copy-text">Копіювати посилання</span>
+          </button>
+
+          <div class="dl-group-label">
+            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-download"/></svg>
+            Завантажити
+          </div>
+
+          <div class="dl-row">
+            <button class="btn-dl" id="btn-dl-png">
+              <svg class="icon icon--dl" aria-hidden="true"><use href="icons.svg#ic-image"/></svg>
+              <span class="btn-dl-name">QR-зображення</span>
+              <span class="btn-dl-desc">PNG · для друку</span>
+            </button>
+            <button class="btn-dl" id="btn-dl-page">
+              <svg class="icon icon--dl" aria-hidden="true"><use href="icons.svg#ic-file-html"/></svg>
+              <span class="btn-dl-name">HTML-сторінка</span>
+              <span class="btn-dl-desc">для сайту або email</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>
