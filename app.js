@@ -256,8 +256,12 @@ function generate() {
     height:         230,
     colorDark:      '#002B26',
     colorLight:     '#FFFFFF',
-    correctLevel:   QRCode.CorrectLevel.M,
+    correctLevel:   QRCode.CorrectLevel.H,
   });
+  
+  if (data.currency === 'UAH') {
+     requestAnimationFrame(() => overlayHryvnia(container));
+  }  
 
   recordEntry(data);
 }
@@ -283,6 +287,33 @@ function copyLink() {
     .catch(() => {
       prompt('Скопіюйте посилання вручну:', currentLink);
     });
+}
+
+function overlayHryvnia(container) {
+  const canvas = container.querySelector('canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const radius = Math.round(size * 0.11);
+  const cx = Math.round(size / 2);
+  const cy = Math.round(size / 2);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.18)';
+  ctx.shadowBlur  = radius * 0.4;
+  ctx.fillStyle   = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = '#007B6E';
+  ctx.font         = `bold ${Math.round(radius * 1.35)}px Arial, sans-serif`;
+  ctx.fillText('₴', cx, cy + Math.round(radius * 0.05));
+  ctx.restore();
 }
 
 /* ════════════════════════════════════════════════
@@ -363,7 +394,7 @@ tr:not(:last-child) td{border-bottom:1px solid #EEF0ED}
 </head>
 <body>
 <div class="card">
-  <div class="stamp">&#10003;&nbsp;НБУ · BCD 002 · Кредитний переказ</div>
+  <div class="stamp">&#10003;&nbsp;Переказ на банкіський рахунок (за стандартом НБУ BCD 002)</div>
   <h1>${esc(d.name)}</h1>
   <p class="code">ЄДРПОУ / ІПН: ${esc(d.edrpou)}</p>
   <div class="qr-wrap">
