@@ -224,6 +224,24 @@ function renderQR(link, data) {
   if (!data.amountField || data.currency === 'UAH') {
     requestAnimationFrame(() => overlayHryvnia(container));
   }
+
+  // Email button
+  const emailBtn = document.getElementById('btn-email');
+  const email = data.email || '';
+  if (email) {
+    const subject = encodeURIComponent('Реквізити для оплати — ' + data.name);
+    const body = encodeURIComponent(
+      'Отримувач: ' + data.name + '\n' +
+      'IBAN: '      + data.iban + '\n' +
+      (data.amountField ? 'Сума: ' + data.amountField + '\n' : '') +
+      'Призначення: ' + data.purpose + '\n\n' +
+      'Посилання для оплати:\n' + link
+    );
+    emailBtn.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    emailBtn.hidden = false;
+  } else {
+    emailBtn.hidden = true;
+  }
 }
 
 /* ════════════════════════════════════════════════

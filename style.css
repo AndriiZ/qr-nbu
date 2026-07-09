@@ -1111,3 +1111,28 @@ mark {
   color: var(--text-3);
   font-size: 14px;
 }
+
+/* ── Email button ── */
+.btn-email {
+  width: 100%;
+  padding: 9px;
+  background: var(--surface-1);
+  color: var(--text-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-email:hover {
+  background: var(--teal-light);
+  border-color: var(--teal-mid);
+  color: var(--teal-dark);
+}
