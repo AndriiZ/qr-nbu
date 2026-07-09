@@ -11,7 +11,7 @@ function esc(s) {
 /* ════════════════════════════════════════════════
    Privacy banner
    ════════════════════════════════════════════════ */
-const LS_BANNER = 'nbu_qr_banner_dismissed';
+/* LS_BANNER defined in storage.js */
 
 function initBanner() {
   try {
