@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Шаблони призначення — Генератор QR НБУ</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css">
+  <script src="storage.js"   defer></script>
+  <script src="templates.js" defer></script>
+  <style>
+    /* Page-local styles on top of the app tokens */
+    .tpl-add { margin-bottom: 20px; }
+    .tpl-add textarea { min-height: 64px; }
+    .tpl-add-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .tpl-add-actions .btn-generate { width: auto; padding: 10px 18px; }
+    .btn-cancel-edit {
+      padding: 10px 16px; background: var(--surface); color: var(--text-2);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .btn-cancel-edit:hover { background: var(--surface-2); }
+
+    .tpl-card {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px;
+    }
+    .tpl-text { flex: 1; font-size: 13.5px; color: var(--text-1); line-height: 1.5; word-break: break-word; }
+    .tpl-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .tpl-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .tpl-btn {
+      background: none; border: none; cursor: pointer; padding: 5px;
+      border-radius: 6px; color: var(--text-3); display: inline-flex;
+    }
+    .tpl-btn:hover { background: var(--teal-light); color: var(--teal-dark); }
+    .tpl-btn--del:hover { background: #FDECEA; color: #B3261E; }
+
+    .tpl-hist { margin-top: 26px; }
+    .tpl-hist-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; background: var(--surface-2, #F4F8F7);
+      border: 1px dashed var(--border); border-radius: var(--radius); margin-bottom: 6px;
+    }
+    .tpl-hist-text { flex: 1; font-size: 13px; color: var(--text-2); word-break: break-word; }
+  </style>
+</head>
+<body>
+
+  <!-- Hamburger nav overlay -->
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <nav class="nav-drawer" id="nav-drawer" aria-label="Навігація">
+    <div class="nav-header">Меню</div>
+    <a href="index.html" class="nav-item">
+      <i class="ti ti-home icon" aria-hidden="true"></i>
+      Генератор QR
+    </a>
+    <a href="recipients.html" class="nav-item">
+      <i class="ti ti-users icon" aria-hidden="true"></i>
+      Отримувачі
+    </a>
+    <a href="templates.html" class="nav-item nav-item--active">
+      <i class="ti ti-notes icon" aria-hidden="true"></i>
+      Шаблони призначення
+    </a>
+  </nav>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-brand">
+        <div class="nbu-logo" aria-hidden="true">НБУ</div>
+        <div>
+          <div class="topbar-title">Шаблони призначення</div>
+          <div class="topbar-sub" id="tpl-count">Завантаження…</div>
+        </div>
+      </div>
+      <button class="hamburger" id="hamburger-btn" aria-label="Меню" aria-expanded="false">
+        <i class="ti ti-menu-2 icon icon--lg" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  <main class="main">
+
+    <!-- Add / edit form -->
+    <div class="card tpl-add">
+      <div class="sect">
+        <i class="ti ti-plus icon" aria-hidden="true"></i>
+        <span id="tpl-form-title">Новий шаблон</span>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <textarea id="tpl-input" placeholder="Оплата за товари/послуги згідно договору №..."></textarea>
+      </div>
+      <div class="tpl-add-actions">
+        <button class="btn-generate" id="btn-tpl-save">
+          <i class="ti ti-device-floppy icon" aria-hidden="true"></i>
+          <span id="btn-tpl-save-text">Додати шаблон</span>
+        </button>
+        <button class="btn-cancel-edit" id="btn-tpl-cancel" hidden>Скасувати</button>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="srch-wrap" style="max-width:none;margin-bottom:14px">
+      <i class="ti ti-search srch-ico" aria-hidden="true"></i>
+      <input type="search" class="srch-input" id="tpl-search"
+             placeholder="Пошук шаблону за текстом…" autocomplete="off">
+    </div>
+
+    <!-- Templates list -->
+    <div id="tpl-list"></div>
+
+    <!-- No results -->
+    <div class="no-results" id="tpl-no-results" hidden>
+      <p>Нічого не знайдено за вашим запитом.</p>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="tpl-empty" hidden>
+      <i class="ti ti-notes icon icon--empty" aria-hidden="true"></i>
+      <p>Ще немає збережених шаблонів.<br>
+      Поки їх немає, на головній сторінці показуються<br>
+      найчастіші призначення з історії генерацій.</p>
+    </div>
+
+    <!-- Raw purposes from history — promote to templates -->
+    <div class="tpl-hist" id="tpl-hist" hidden>
+      <div class="recents-label">
+        <i class="ti ti-history icon" aria-hidden="true"></i>
+        Часті призначення з історії — додати як шаблон
+      </div>
+      <div id="tpl-hist-list"></div>
+    </div>
+
+  </main>
+
+</body>
+</html>

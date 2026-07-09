@@ -41,6 +41,16 @@ function initNav() {
 }
 
 /* ════════════════════════════════════════════════
+   Selected recipient (drives related-templates chips)
+   ════════════════════════════════════════════════ */
+let currentRecipientId = null;
+
+function setCurrentRecipient(id) {
+  currentRecipientId = id || null;
+  renderTemplateChips();
+}
+
+/* ════════════════════════════════════════════════
    Recents chips  (uses storage.js: getTopRecents)
    ════════════════════════════════════════════════ */
 function renderRecents() {
@@ -64,7 +74,63 @@ function renderRecents() {
   });
 }
 
+/* ════════════════════════════════════════════════
+   Purpose template chips  (uses storage.js: getTopTemplates)
+   Top-5 saved templates; falls back to raw purposes
+   from generation history when none are saved.
+   ════════════════════════════════════════════════ */
+function renderTemplateChips() {
+  const wrap  = document.getElementById('tpl-wrap');
+  const chips = document.getElementById('tpl-chips');
+  const label = document.getElementById('tpl-label');
+
+  // Templates linked to the selected recipient take priority
+  let top = [];
+  let labelText = '';
+  const related = currentRecipientId ? getTemplatesForRecipient(currentRecipientId) : [];
+  if (related.length) {
+    top = related.slice(0, 5).map(x => ({ ...x.template, count: x.count, raw: false }));
+    labelText = 'Шаблони цього отримувача';
+  } else {
+    top = getTopTemplates(5); // from storage.js
+    labelText = top.length && top[0].raw ? 'Нещодавні призначення' : 'Шаблони призначення';
+  }
+
+  const hasAnySearchable = loadTemplates().length > 0 || top.length > 0;
+  if (!hasAnySearchable) { wrap.style.display = 'none'; return; }
+
+  label.textContent = labelText;
+  wrap.style.display = 'block';
+  chips.innerHTML = '';
+
+  top.forEach(t => {
+    const chip = document.createElement('button');
+    chip.type      = 'button';
+    chip.className = 'chip';
+    chip.title     = t.text;
+    const name = document.createElement('span');
+    name.className   = 'chip-name';
+    name.style.maxWidth = '180px';
+    name.textContent = t.text;
+    chip.appendChild(name);
+    if (t.count > 0) {
+      const cnt = document.createElement('span');
+      cnt.className   = 'chip-count';
+      cnt.textContent = t.count;
+      chip.appendChild(cnt);
+    }
+    chip.addEventListener('click', () => {
+      const ta = document.getElementById('f-purpose');
+      ta.value = t.text;
+      ta.classList.remove('field-error');
+      ta.focus();
+    });
+    chips.appendChild(chip);
+  });
+}
+
 function fillFromRecipient(r) {
+  setCurrentRecipient(r.id);
   document.getElementById('f-name').value    = r.name    || '';
   document.getElementById('f-iban').value    = r.iban    || '';
   document.getElementById('f-edrpou').value  = r.edrpou  || '';
@@ -201,7 +267,95 @@ let currentData = null;
 /* ════════════════════════════════════════════════
    Render QR from a link (used by URL param restore)
    ════════════════════════════════════════════════ */
-function renderQR(link, data) {
+/* qrcode-generator (kazuhikoarase) — reference QR implementation,
+   auto-selects version 1–40, no "code length overflow" bug of the
+   abandoned qrcodejs. Primary CDN + fallback. */
+const QR_LIB_URLS = [
+  'vendor/qrcode.min.js', // local copy — works fully offline if present
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js',
+];
+let qrLibPromise = null;
+
+function qrLibReady() { return typeof qrcode === 'function'; }
+
+function loadScript(src) {
+  return new Promise(resolve => {
+    const sc = document.createElement('script');
+    sc.src = src;
+    sc.onload  = () => resolve(qrLibReady());
+    sc.onerror = () => resolve(false);
+    document.head.appendChild(sc);
+    setTimeout(() => resolve(qrLibReady()), 8000);
+  });
+}
+
+/* The <script defer> in <head> may have failed (offline, blocked CDN,
+   flaky network on file://). Re-inject on demand; failed attempts
+   are not cached, so "Спробувати ще раз" really retries. */
+function ensureQRLib() {
+  if (qrLibReady()) return Promise.resolve(true);
+  if (!qrLibPromise) {
+    qrLibPromise = (async () => {
+      for (const url of QR_LIB_URLS) {
+        await loadScript(url);
+        if (qrLibReady()) return true;
+      }
+      return false;
+    })().then(ok => {
+      if (!ok) qrLibPromise = null; // allow a fresh retry
+      return ok;
+    });
+  }
+  return qrLibPromise;
+}
+
+/* Draw the QR model onto a crisp 2x canvas (better PNG for print) */
+function drawQRCanvas(qr, displaySize) {
+  const scale  = 2;
+  const size   = displaySize * scale;
+  const margin = 8 * scale;                 // quiet zone
+  const count  = qr.getModuleCount();
+  const cell   = (size - margin * 2) / count;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  canvas.style.width = canvas.style.height = displaySize + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#002B26';
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (qr.isDark(r, c)) {
+        ctx.fillRect(
+          Math.floor(margin + c * cell),
+          Math.floor(margin + r * cell),
+          Math.ceil(cell),
+          Math.ceil(cell)
+        );
+      }
+    }
+  }
+  return canvas;
+}
+
+function showQRError(container, link, data, msg) {
+  container.innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'qr-error';
+  box.innerHTML = `<i class="ti ti-alert-triangle icon" aria-hidden="true"></i><p>${esc(msg)}</p>`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-copy';
+  btn.innerHTML = '<i class="ti ti-refresh icon" aria-hidden="true"></i>&nbsp;Спробувати ще раз';
+  btn.addEventListener('click', () => renderQR(link, data));
+  box.appendChild(btn);
+  container.appendChild(box);
+}
+
+async function renderQR(link, data) {
   currentLink = link;
   currentData = data;
 
@@ -210,22 +364,41 @@ function renderQR(link, data) {
   document.getElementById('result-content').style.display     = 'block';
 
   const container = document.getElementById('qr-container');
-  container.innerHTML = '';
-  /* global QRCode */
-  new QRCode(container, {
-    text:         link,
-    width:        230,
-    height:       230,
-    colorDark:    '#002B26',
-    colorLight:   '#FFFFFF',
-    correctLevel: QRCode.CorrectLevel.H,
-  });
+  container.innerHTML = '<div class="qr-loading">Генерація QR…</div>';
 
-  if (!data.amountField || data.currency === 'UAH') {
+  const libOk = await ensureQRLib();
+  if (!libOk) {
+    showQRError(container, link, data,
+      'Не вдалося завантажити бібліотеку QR-кодів (CDN недоступний). ' +
+      'Дані отримувача вже збережено — перевірте інтернет і повторіть.');
+    setEmailButton(data, link);
+    return;
+  }
+
+  container.innerHTML = '';
+  const withLogo = !data.amountField || data.currency === 'UAH';
+  try {
+    /* global qrcode */
+    const qr = qrcode(0, withLogo ? 'Q' : 'M'); // 0 = auto version (1–40)
+    qr.addData(link);
+    qr.make();
+    container.appendChild(drawQRCanvas(qr, 230));
+  } catch (err) {
+    showQRError(container, link, data,
+      'Не вдалося побудувати QR-код: ' + (err && err.message ? err.message : err) +
+      '. Спробуйте скоротити призначення платежу.');
+    setEmailButton(data, link);
+    return;
+  }
+
+  if (withLogo) {
     requestAnimationFrame(() => overlayHryvnia(container));
   }
 
-  // Email button
+  setEmailButton(data, link);
+}
+
+function setEmailButton(data, link) {
   const emailBtn = document.getElementById('btn-email');
   const email = data.email || '';
   if (email) {
@@ -249,11 +422,16 @@ function generate() {
   document.getElementById('raw-text').textContent = raw;
 
   const link = 'https://bank.gov.ua/qr/' + toBase64URL(encodeWin1251(raw));
-  renderQR(link, data);
 
-  // Save to storage (uses storage.js)
-  upsertGeneration({ ...data, link });
+  // Save FIRST — persistence must never depend on QR rendering,
+  // which can fail locally when the CDN library didn't load.
+  const tpl    = findTemplateByText(data.purpose); // link generation ↔ template
+  const result = upsertGeneration({ ...data, link, tplId: tpl ? tpl.id : undefined });
+  bumpTemplateUsage(data.purpose);
   renderRecents();
+  setCurrentRecipient(result && result.recipient ? result.recipient.id : null);
+
+  renderQR(link, data);
 }
 
 /* ════════════════════════════════════════════════
@@ -484,6 +662,8 @@ function restoreFromURL() {
   const gen = recipient.generations.find(g => g.id === gid);
   if (!gen) return;
 
+  setCurrentRecipient(recipient.id);
+
   // Fill form
   document.getElementById('f-name').value    = recipient.name    || '';
   document.getElementById('f-iban').value    = recipient.iban    || '';
@@ -525,6 +705,92 @@ function restoreFromURL() {
 }
 
 /* ════════════════════════════════════════════════
+   Quick search dropdowns (recipient + template)
+   ════════════════════════════════════════════════ */
+function initQuickSearch({ inputId, dropId, search, renderItem, onPick }) {
+  const input = document.getElementById(inputId);
+  const drop  = document.getElementById(dropId);
+  let timer   = null;
+
+  const hide = () => { drop.hidden = true; drop.innerHTML = ''; };
+
+  const show = q => {
+    const results = search(q);
+    drop.innerHTML = '';
+    if (!results.length) {
+      drop.innerHTML = '<div class="srch-empty">Нічого не знайдено</div>';
+    } else {
+      results.forEach(r => {
+        const item = document.createElement('button');
+        item.type      = 'button';
+        item.className = 'srch-item';
+        renderItem(item, r);
+        item.addEventListener('click', () => {
+          onPick(r);
+          input.value = '';
+          hide();
+        });
+        drop.appendChild(item);
+      });
+    }
+    drop.hidden = false;
+  };
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (!q) { hide(); return; }
+    timer = setTimeout(() => show(q), 150);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { hide(); input.blur(); }
+    if (e.key === 'ArrowDown' && !drop.hidden) {
+      const first = drop.querySelector('.srch-item');
+      if (first) { e.preventDefault(); first.focus(); }
+    }
+  });
+
+  document.addEventListener('click', e => {
+    if (!input.contains(e.target) && !drop.contains(e.target)) hide();
+  });
+}
+
+function shortIban(iban) {
+  return iban ? iban.slice(0, 4) + ' ' + iban.slice(4, 8) + ' … ' + iban.slice(-4) : '';
+}
+
+function initRecipientQuickSearch() {
+  initQuickSearch({
+    inputId: 'r-quick-search',
+    dropId:  'r-quick-drop',
+    search:  q => searchRecipients(q, 8), // storage.js — searches ALL recipients
+    renderItem: (el, r) => {
+      el.innerHTML = `${esc(r.name)}<span class="srch-item-sub">${esc(shortIban(r.iban))}${r.edrpou ? ' · ' + esc(r.edrpou) : ''}</span>`;
+    },
+    onPick: r => fillFromRecipient(r), // also selects recipient → related templates
+  });
+}
+
+function initTemplateQuickSearch() {
+  initQuickSearch({
+    inputId: 'tpl-quick-search',
+    dropId:  'tpl-quick-drop',
+    search:  q => searchTemplates(q, 8), // storage.js — falls back to raw history
+    renderItem: (el, t) => {
+      const badge = t.count ? `<span class="srch-item-sub">${t.count} використань${t.raw ? ' · з історії' : ''}</span>` : (t.raw ? '<span class="srch-item-sub">з історії</span>' : '');
+      el.innerHTML = `${esc(t.text)}${badge}`;
+    },
+    onPick: t => {
+      const ta = document.getElementById('f-purpose');
+      ta.value = t.text;
+      ta.classList.remove('field-error');
+      ta.focus();
+    },
+  });
+}
+
+/* ════════════════════════════════════════════════
    Init
    ════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -532,6 +798,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initNav();
   initOptionalToggle();
   renderRecents();
+  renderTemplateChips();
+  initRecipientQuickSearch();
+  initTemplateQuickSearch();
   restoreFromURL();
 
   document.getElementById('btn-generate').addEventListener('click', generate);
@@ -543,5 +812,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('f-iban').addEventListener('input', function () {
     setFieldState('f-iban', 'status-iban', 'msg-iban', 'clear', '');
     this.classList.remove('field-error');
+    if (currentRecipientId) setCurrentRecipient(null); // manual edit → no longer "this recipient"
   });
 });

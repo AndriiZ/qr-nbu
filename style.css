@@ -1136,3 +1136,111 @@ mark {
   border-color: var(--teal-mid);
   color: var(--teal-dark);
 }
+
+/* ════════════════════════════════════════════════
+   Quick-search inputs with dropdown (main form)
+   ════════════════════════════════════════════════ */
+.srch-wrap {
+  position: relative;
+  margin-bottom: 8px;
+  max-width: 440px;
+}
+
+.srch-input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text-1);
+}
+.srch-input:focus { outline: none; border-color: var(--teal); }
+
+.srch-ico {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  pointer-events: none;
+  font-size: 14px;
+}
+
+.srch-drop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 60, 54, .14);
+  z-index: 50;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.srch-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.srch-item:last-child { border-bottom: none; }
+.srch-item:hover, .srch-item:focus { background: var(--teal-light); outline: none; }
+
+.srch-item-sub {
+  display: block;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.srch-empty {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+/* Template badge in generation history rows */
+.gen-tpl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--teal-light);
+  color: var(--teal-dark);
+  border-radius: 10px;
+  font-size: 10.5px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+/* ── QR loading / error states ── */
+.qr-loading {
+  padding: 60px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.qr-error {
+  padding: 24px 16px;
+  text-align: center;
+}
+.qr-error .icon { font-size: 32px; color: #C77700; display: block; margin: 0 auto 10px; }
+.qr-error p {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.qr-error .btn-copy { width: auto; margin: 0 auto; padding: 8px 16px; }

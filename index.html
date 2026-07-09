@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css">
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="vendor/qrcode.min.js" defer></script>
   <script src="encoding.js" defer></script>
   <script src="storage.js"  defer></script>
   <script src="validate.js" defer></script>
@@ -27,6 +27,10 @@
     <a href="recipients.html" class="nav-item">
       <i class="ti ti-users icon" aria-hidden="true"></i>
       Отримувачі
+    </a>
+    <a href="templates.html" class="nav-item">
+      <i class="ti ti-notes icon" aria-hidden="true"></i>
+      Шаблони призначення
     </a>
   </nav>
 
@@ -63,8 +67,14 @@
     <!-- Recent IBANs -->
     <div id="recents-wrap" aria-live="polite">
       <div class="recents-label">
-        <i class="ti ti-clock icon" aria-hidden="true"></i>
-        Нещодавні отримувачі
+        <i class="ti ti-users icon" aria-hidden="true"></i>
+        Отримувачі
+      </div>
+      <div class="srch-wrap">
+        <i class="ti ti-search srch-ico" aria-hidden="true"></i>
+        <input type="search" class="srch-input" id="r-quick-search"
+               placeholder="Пошук отримувача: ім'я, IBAN, ЄДРПОУ, контакт…" autocomplete="off">
+        <div class="srch-drop" id="r-quick-drop" hidden></div>
       </div>
       <div class="recents-chips" id="recents-chips"></div>
     </div>
@@ -152,6 +162,20 @@
         <div class="sect" style="margin-top: 18px;">
           <i class="ti ti-list icon" aria-hidden="true"></i>
           Призначення платежу
+        </div>
+
+        <div id="tpl-wrap" style="display:none;margin-bottom:12px">
+          <div class="recents-label">
+            <i class="ti ti-notes icon" aria-hidden="true"></i>
+            <span id="tpl-label">Шаблони призначення</span>
+          </div>
+          <div class="srch-wrap">
+            <i class="ti ti-search srch-ico" aria-hidden="true"></i>
+            <input type="search" class="srch-input" id="tpl-quick-search"
+                   placeholder="Пошук шаблону призначення…" autocomplete="off">
+            <div class="srch-drop" id="tpl-quick-drop" hidden></div>
+          </div>
+          <div class="recents-chips" id="tpl-chips"></div>
         </div>
 
         <div class="field">

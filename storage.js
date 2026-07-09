@@ -32,7 +32,7 @@ function uniqueDayCount(generations) {
 
 /* Upsert a generation for a given IBAN. Returns { recipient, generation } or null if limit hit. */
 function upsertGeneration(data) {
-  const { name, iban, edrpou, purpose, currency, amount, amountField, link, email, phone, tg } = data;
+  const { name, iban, edrpou, purpose, currency, amount, amountField, link, email, phone, tg, tplId } = data;
   const list = loadRecipients();
 
   let recipient = list.find(r => r.iban === iban);
@@ -63,6 +63,7 @@ function upsertGeneration(data) {
   }
 
   const gen = { id: genId(), purpose, currency, amount, amountField, link, timestamp: Date.now() };
+  if (tplId) gen.tplId = tplId;
   recipient.generations.push(gen);
   recipient.lastUsed = gen.timestamp;
   recipient.count    = uniqueDayCount(recipient.generations);
@@ -127,4 +128,165 @@ function importJSON(jsonStr) {
   }
 
   saveRecipients(list);
+}
+
+/* ════════════════════════════════════════════════
+   Purpose templates  (Шаблони призначення платежу)
+   ════════════════════════════════════════════════ */
+const LS_TEMPLATES  = 'nbu_qr_purpose_templates';
+const MAX_TEMPLATES = 100;
+
+function loadTemplates() {
+  try { return JSON.parse(localStorage.getItem(LS_TEMPLATES)) || []; }
+  catch { return []; }
+}
+
+function saveTemplates(list) {
+  try { localStorage.setItem(LS_TEMPLATES, JSON.stringify(list)); }
+  catch { alert('Сховище переповнено — видаліть зайві шаблони'); }
+}
+
+/* Returns created/existing template, or null if limit hit */
+function addTemplate(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  const list = loadTemplates();
+
+  const existing = list.find(x => x.text === t);
+  if (existing) return existing;
+
+  if (list.length >= MAX_TEMPLATES) {
+    alert(`Досягнуто ліміт ${MAX_TEMPLATES} шаблонів`);
+    return null;
+  }
+  const tpl = { id: genId(), text: t, count: 0, lastUsed: 0, createdAt: Date.now() };
+  list.push(tpl);
+  saveTemplates(list);
+  return tpl;
+}
+
+function updateTemplate(id, text) {
+  const t = String(text || '').trim();
+  if (!t) return false;
+  const list = loadTemplates();
+  const tpl  = list.find(x => x.id === id);
+  if (!tpl) return false;
+  tpl.text = t;
+  saveTemplates(list);
+  return true;
+}
+
+function deleteTemplate(id) {
+  saveTemplates(loadTemplates().filter(x => x.id !== id));
+}
+
+/* Called on each QR generation: if the purpose matches a saved
+   template, bump its usage stats (drives the top-5 ordering). */
+function bumpTemplateUsage(purposeText) {
+  const t = String(purposeText || '').trim();
+  if (!t) return;
+  const list = loadTemplates();
+  const tpl  = list.find(x => x.text === t);
+  if (!tpl) return;
+  tpl.count    = (tpl.count || 0) + 1;
+  tpl.lastUsed = Date.now();
+  saveTemplates(list);
+}
+
+/* "Raw" fallback: most frequent purposes from generation history */
+function getTopPurposesFromHistory(n = 5) {
+  const freq = new Map();
+  for (const r of loadRecipients()) {
+    for (const g of (r.generations || [])) {
+      const p = String(g.purpose || '').trim();
+      if (!p) continue;
+      const cur = freq.get(p) || { text: p, count: 0, lastUsed: 0 };
+      cur.count++;
+      cur.lastUsed = Math.max(cur.lastUsed, g.timestamp || 0);
+      freq.set(p, cur);
+    }
+  }
+  return [...freq.values()]
+    .sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed)
+    .slice(0, n);
+}
+
+/* Top N templates for the generator page.
+   No saved templates → raw purposes from history (marked raw: true). */
+function getTopTemplates(n = 5) {
+  const tpl = loadTemplates();
+  if (tpl.length) {
+    return [...tpl]
+      .sort((a, b) => (b.count || 0) - (a.count || 0) || (b.lastUsed || 0) - (a.lastUsed || 0))
+      .slice(0, n)
+      .map(t => ({ ...t, raw: false }));
+  }
+  return getTopPurposesFromHistory(n).map(t => ({ ...t, raw: true }));
+}
+
+/* ════════════════════════════════════════════════
+   Recipient ↔ template links & search
+   (a generation stores tplId when its purpose
+   matched a saved template at generation time)
+   ════════════════════════════════════════════════ */
+function findTemplateByText(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  return loadTemplates().find(x => x.text === t) || null;
+}
+
+/* Templates this recipient's QRs were generated from, most used first */
+function getTemplatesForRecipient(rid) {
+  const r = getRecipientById(rid);
+  if (!r) return [];
+  const byId = new Map(loadTemplates().map(t => [t.id, t]));
+  const agg  = new Map();
+  for (const g of (r.generations || [])) {
+    if (!g.tplId || !byId.has(g.tplId)) continue;
+    const cur = agg.get(g.tplId) || { template: byId.get(g.tplId), count: 0, lastUsed: 0 };
+    cur.count++;
+    cur.lastUsed = Math.max(cur.lastUsed, g.timestamp || 0);
+    agg.set(g.tplId, cur);
+  }
+  return [...agg.values()].sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed);
+}
+
+/* Recipients that have at least one generation linked to this template */
+function getRecipientsForTemplate(tplId) {
+  const out = [];
+  for (const r of loadRecipients()) {
+    const n = (r.generations || []).filter(g => g.tplId === tplId).length;
+    if (n) out.push({ id: r.id, name: r.name, iban: r.iban, count: n });
+  }
+  return out.sort((a, b) => b.count - a.count);
+}
+
+/* ── Search ── */
+function searchRecipients(q, limit = 8) {
+  const s = String(q || '').trim().toLowerCase();
+  if (!s) return [];
+  return loadRecipients()
+    .filter(r => [r.name, r.iban, r.edrpou, r.email, r.phone, r.tg]
+      .some(f => f && String(f).toLowerCase().includes(s)))
+    .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0))
+    .slice(0, limit);
+}
+
+/* Searches saved templates; when none are saved at all,
+   falls back to raw purposes from generation history. */
+function searchTemplates(q, limit = 8) {
+  const s = String(q || '').trim().toLowerCase();
+  if (!s) return [];
+  const tpl = loadTemplates();
+  if (tpl.length) {
+    return tpl
+      .filter(t => t.text.toLowerCase().includes(s))
+      .sort((a, b) => (b.count || 0) - (a.count || 0) || (b.lastUsed || 0) - (a.lastUsed || 0))
+      .slice(0, limit)
+      .map(t => ({ ...t, raw: false }));
+  }
+  return getTopPurposesFromHistory(100)
+    .filter(p => p.text.toLowerCase().includes(s))
+    .slice(0, limit)
+    .map(p => ({ ...p, raw: true }));
 }

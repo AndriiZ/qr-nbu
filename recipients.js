@@ -80,9 +80,19 @@ function renderOptional(value, tiClass) {
   </span>`;
 }
 
+let tplMap = new Map(); // tplId → template, refreshed on each render
+
+function refreshTplMap() {
+  tplMap = new Map(loadTemplates().map(t => [t.id, t]));
+}
+
 function renderGeneration(g, recipientId) {
   const amountStr = g.amountField
     ? `<span class="gen-amount">${highlight(g.amountField, searchQuery)}</span>`
+    : '';
+  const tpl = g.tplId ? tplMap.get(g.tplId) : null;
+  const tplBadge = tpl
+    ? `<span class="gen-tpl-badge" title="Згенеровано з шаблону: ${esc(tpl.text)}"><i class="ti ti-notes icon" aria-hidden="true"></i>шаблон</span>`
     : '';
   return `
   <div class="gen-row">
@@ -91,6 +101,7 @@ function renderGeneration(g, recipientId) {
       ${esc(formatDate(g.timestamp))}
     </button>
     <span class="gen-purpose">${esc(g.purpose)}</span>
+    ${tplBadge}
     ${amountStr}
   </div>`;
 }
@@ -141,6 +152,7 @@ function renderRecipient(r) {
    Render list (with pagination)
    ════════════════════════════════════════════════ */
 function renderList() {
+  refreshTplMap();
   const filtered    = filteredRecipients();
   const total       = filtered.length;
   const allCount    = loadRecipients().length;
@@ -191,6 +203,7 @@ function renderList() {
 
 /* ── Append next page without full re-render ── */
 function loadMore() {
+  refreshTplMap();
   const filtered  = filteredRecipients();
   const nextSlice = filtered.slice(visibleCount, visibleCount + PAGE_SIZE);
   visibleCount   += PAGE_SIZE;
