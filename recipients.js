@@ -334,7 +334,9 @@ function initNav() {
   const open  = () => { drawer.classList.add('open'); overlay.classList.add('open'); btn.setAttribute('aria-expanded','true'); };
   const close = () => { drawer.classList.remove('open'); overlay.classList.remove('open'); btn.setAttribute('aria-expanded','false'); };
   btn.addEventListener('click', () => drawer.classList.contains('open') ? close() : open());
-  overlay.addEventListener('click', close);
+  document.addEventListener('click', e => {
+    if (drawer.classList.contains('open') && !drawer.contains(e.target) && !btn.contains(e.target)) close();
+  });
 }
 
 /* ════════════════════════════════════════════════
