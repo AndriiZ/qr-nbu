@@ -1,158 +1,23 @@
 'use strict';
 
-/* ════════════════════════════════════════════════
-   Win1251 encoder
-   ════════════════════════════════════════════════ */
-const WIN1251 = (() => {
-  const map = {};
+/* WIN1251 encoder and toBase64URL defined in validate.js (loaded first) */
 
-  // ASCII passthrough
-  for (let i = 0; i < 128; i++) map[i] = i;
-
-  // 0x80–0x9F
-  const range80 = [
-    0x0402, 0x0403, 0x201A, 0x0453, 0x201E, 0x2026, 0x2020, 0x2021,
-    0x20AC, 0x2030, 0x0409, 0x2039, 0x040A, 0x040C, 0x040B, 0x040F,
-    0x0452, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-    0,      0x2122, 0x0459, 0x203A, 0x045A, 0x045C, 0x045B, 0x045F,
-  ];
-
-  // 0xA0–0xBF
-  const rangeA0 = [
-    0x00A0, 0x040E, 0x045E, 0x0408, 0x00A4, 0x0490, 0x00A6, 0x00A7,
-    0x0401, 0x00A9, 0x0404, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x0407,
-    0x00B0, 0x00B1, 0x0406, 0x0456, 0x0491, 0x00B5, 0x00B6, 0x00B7,
-    0x0451, 0x2116, 0x0454, 0x00BB, 0x0458, 0x0405, 0x0455, 0x0457,
-  ];
-
-  range80.forEach((cp, i) => { if (cp) map[cp] = 0x80 + i; });
-  rangeA0.forEach((cp, i) => { if (cp) map[cp] = 0xA0 + i; });
-
-  // 0xC0–0xFF: А–я
-  for (let i = 0; i < 64; i++) map[0x0410 + i] = 0xC0 + i;
-
-  return map;
-})();
-
-function encodeWin1251(str) {
-  const bytes = [];
-  for (const ch of str) {
-    const cp = ch.codePointAt(0);
-    bytes.push(cp < 128 ? cp : (WIN1251[cp] ?? 0x3F));
-  }
-  return bytes;
-}
-
-function toBase64URL(bytes) {
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
-/* ════════════════════════════════════════════════
-   HTML escape
-   ════════════════════════════════════════════════ */
 function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/* ════════════════════════════════════════════════
-   LocalStorage — history
-   ════════════════════════════════════════════════ */
-const LS_HISTORY = 'nbu_qr_history';
-const LS_BANNER  = 'nbu_qr_banner_dismissed';
-
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(LS_HISTORY)) || []; }
-  catch { return []; }
-}
-
-function saveHistory(list) {
-  try { localStorage.setItem(LS_HISTORY, JSON.stringify(list)); }
-  catch { /* storage full or unavailable */ }
-}
-
-function recordEntry(data) {
-  const history = loadHistory();
-  const existing = history.find(e => e.iban === data.iban);
-  if (existing) {
-    Object.assign(existing, data);
-    existing.count    = (existing.count || 1) + 1;
-    existing.lastUsed = Date.now();
-  } else {
-    history.push({ ...data, count: 1, lastUsed: Date.now() });
-  }
-  saveHistory(history);
-  renderRecents();
-}
-
-function getTopRecents(n = 5) {
-  return loadHistory()
-    .sort((a, b) => (b.count - a.count) || (b.lastUsed - a.lastUsed))
-    .slice(0, n);
-}
-
-/* ════════════════════════════════════════════════
-   Render recent IBAN chips
-   ════════════════════════════════════════════════ */
-function renderRecents() {
-  const top   = getTopRecents();
-  const wrap  = document.getElementById('recents-wrap');
-  const chips = document.getElementById('recents-chips');
-  if (!top.length) { wrap.style.display = 'none'; return; }
-
-  wrap.style.display = 'block';
-  chips.innerHTML = '';
-
-  top.forEach(entry => {
-    const shortIban = entry.iban.slice(0, 8) + '…' + entry.iban.slice(-4);
-
-    const chip = document.createElement('button');
-    chip.className = 'chip';
-    chip.title = `${entry.name}\n${entry.iban}\nВикористань: ${entry.count}`;
-    chip.innerHTML =
-      `<span class="chip-name">${esc(entry.name)}</span>` +
-      `<span class="chip-iban">${esc(shortIban)}</span>` +
-      `<span class="chip-count">${entry.count}</span>`;
-    chip.addEventListener('click', () => fillFromEntry(entry));
-    chips.appendChild(chip);
-  });
-}
-
-function fillFromEntry(entry) {
-  document.getElementById('f-name').value     = entry.name     || '';
-  document.getElementById('f-iban').value     = entry.iban     || '';
-  document.getElementById('f-edrpou').value   = entry.edrpou   || '';
-  document.getElementById('f-purpose').value  = entry.purpose  || '';
-  document.getElementById('f-currency').value = entry.currency || 'UAH';
-  document.getElementById('f-amount').value   = entry.amount > 0 ? entry.amount : '';
-
-  // Re-validate filled fields so user sees green status immediately
-  const ibanResult = validateIBAN(entry.iban || '');
-  setFieldState('f-iban', 'status-iban', 'msg-iban', ibanResult.ok ? 'ok' : 'clear', ibanResult.ok ? ibanResult.msg : '');
-
-  const codeResult = validateCode(entry.edrpou || '');
-  setFieldState('f-edrpou', 'status-edrpou', 'msg-edrpou', codeResult.ok ? 'ok' : 'clear', codeResult.ok ? codeResult.msg : '');
-
-  document.getElementById('f-name').focus();
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /* ════════════════════════════════════════════════
    Privacy banner
    ════════════════════════════════════════════════ */
+const LS_BANNER = 'nbu_qr_banner_dismissed';
+
 function initBanner() {
   try {
-    if (localStorage.getItem(LS_BANNER) === '1') {
+    if (localStorage.getItem(LS_BANNER) === '1')
       document.getElementById('privacy-banner').classList.add('hidden');
-    }
-  } catch { /* unavailable */ }
+  } catch { /* ok */ }
 
   document.getElementById('banner-close-btn').addEventListener('click', () => {
     document.getElementById('privacy-banner').classList.add('hidden');
@@ -161,7 +26,81 @@ function initBanner() {
 }
 
 /* ════════════════════════════════════════════════
-   Form validation — uses validate.js functions
+   Hamburger nav
+   ════════════════════════════════════════════════ */
+function initNav() {
+  const btn     = document.getElementById('hamburger-btn');
+  const drawer  = document.getElementById('nav-drawer');
+  const overlay = document.getElementById('nav-overlay');
+  const open  = () => { drawer.classList.add('open'); overlay.classList.add('open'); btn.setAttribute('aria-expanded','true'); };
+  const close = () => { drawer.classList.remove('open'); overlay.classList.remove('open'); btn.setAttribute('aria-expanded','false'); };
+  btn.addEventListener('click', () => drawer.classList.contains('open') ? close() : open());
+  overlay.addEventListener('click', close);
+}
+
+/* ════════════════════════════════════════════════
+   Recents chips  (uses storage.js: getTopRecents)
+   ════════════════════════════════════════════════ */
+function renderRecents() {
+  const top   = getTopRecents(); // from storage.js
+  const wrap  = document.getElementById('recents-wrap');
+  const chips = document.getElementById('recents-chips');
+  if (!top.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  chips.innerHTML = '';
+  top.forEach(r => {
+    const shortIban = r.iban.slice(0, 4) + '…' + r.iban.slice(-4);
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.title = `${r.name}\n${r.iban}`;
+    chip.innerHTML =
+      `<span class="chip-name">${esc(r.name)}</span>` +
+      `<span class="chip-iban">${esc(shortIban)}</span>` +
+      `<span class="chip-count">${r.count || 0}</span>`;
+    chip.addEventListener('click', () => fillFromRecipient(r));
+    chips.appendChild(chip);
+  });
+}
+
+function fillFromRecipient(r) {
+  document.getElementById('f-name').value    = r.name    || '';
+  document.getElementById('f-iban').value    = r.iban    || '';
+  document.getElementById('f-edrpou').value  = r.edrpou  || '';
+  document.getElementById('f-purpose').value = '';
+  document.getElementById('f-currency').value = 'UAH';
+  document.getElementById('f-amount').value  = '';
+  document.getElementById('f-email').value   = r.email   || '';
+  document.getElementById('f-phone').value   = r.phone   || '';
+  document.getElementById('f-tg').value      = r.tg      || '';
+
+  if (r.email || r.phone || r.tg) openOptional();
+
+  const ibanRes = validateIBAN(r.iban || '');
+  setFieldState('f-iban', 'status-iban', 'msg-iban', ibanRes.ok ? 'ok' : 'clear', ibanRes.ok ? ibanRes.msg : '');
+  const codeRes = validateCode(r.edrpou || '');
+  setFieldState('f-edrpou', 'status-edrpou', 'msg-edrpou', codeRes.ok ? 'ok' : 'clear', codeRes.ok ? codeRes.msg : '');
+
+  document.getElementById('f-purpose').focus();
+}
+
+/* ════════════════════════════════════════════════
+   Optional contact fields toggle
+   ════════════════════════════════════════════════ */
+function openOptional() {
+  document.getElementById('optional-fields').classList.add('open');
+  document.getElementById('btn-toggle-optional').classList.add('open');
+}
+
+function initOptionalToggle() {
+  document.getElementById('btn-toggle-optional').addEventListener('click', function () {
+    const panel = document.getElementById('optional-fields');
+    const isOpen = panel.classList.toggle('open');
+    this.classList.toggle('open', isOpen);
+  });
+}
+
+/* ════════════════════════════════════════════════
+   Validation  (uses validate.js functions)
    ════════════════════════════════════════════════ */
 function getFormData() {
   const name    = document.getElementById('f-name').value.trim();
@@ -173,20 +112,17 @@ function getFormData() {
 
   if (!name) {
     document.getElementById('f-name').classList.add('field-error');
-    document.getElementById('f-name').focus();
     hasErrors = true;
   } else {
     document.getElementById('f-name').classList.remove('field-error');
   }
 
   const ibanResult = validateIBAN(ibanRaw);
-  setFieldState('f-iban', 'status-iban', 'msg-iban',
-    ibanResult.ok ? 'ok' : 'error', ibanResult.msg);
+  setFieldState('f-iban', 'status-iban', 'msg-iban', ibanResult.ok ? 'ok' : 'error', ibanResult.msg);
   if (!ibanResult.ok) hasErrors = true;
 
   const codeResult = validateCode(codeRaw);
-  setFieldState('f-edrpou', 'status-edrpou', 'msg-edrpou',
-    codeResult.ok ? 'ok' : 'error', codeResult.msg);
+  setFieldState('f-edrpou', 'status-edrpou', 'msg-edrpou', codeResult.ok ? 'ok' : 'error', codeResult.msg);
   if (!codeResult.ok) hasErrors = true;
 
   if (!purpose) {
@@ -197,7 +133,6 @@ function getFormData() {
   }
 
   if (hasErrors) {
-    // Focus first invalid field
     if (!name) document.getElementById('f-name').focus();
     else if (!ibanResult.ok) document.getElementById('f-iban').focus();
     else if (!codeResult.ok) document.getElementById('f-edrpou').focus();
@@ -205,98 +140,37 @@ function getFormData() {
     return null;
   }
 
-  const iban = ibanRaw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  const currency = document.getElementById('f-currency').value;
-  const amount   = parseFloat(document.getElementById('f-amount').value) || 0;
+  const iban      = ibanRaw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const currency  = document.getElementById('f-currency').value;
+  const amount    = parseFloat(document.getElementById('f-amount').value) || 0;
   const amountField = amount > 0
     ? currency + amount.toFixed(2).replace(/\.00$/, '')
     : '';
+  const email = document.getElementById('f-email').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const tg    = document.getElementById('f-tg').value.trim();
 
-  return { name, iban, edrpou: codeRaw, purpose, currency, amount, amountField };
+  return { name, iban, edrpou: codeRaw, purpose, currency, amount, amountField, email, phone, tg };
 }
 
 /* ════════════════════════════════════════════════
    NBU payload builder
    ════════════════════════════════════════════════ */
 function buildPayload(d) {
-  const sep  = '\r\n';
-  const lines = ['BCD', '002', '2', 'UCT', '', d.name, d.iban, d.amountField, d.edrpou, '', '', d.purpose, ''];
-  return lines.join(sep);
+  return ['BCD','002','2','UCT','', d.name, d.iban, d.amountField, d.edrpou,'','', d.purpose,''].join('\r\n');
 }
 
 /* ════════════════════════════════════════════════
-   State
+   ₴ logo overlay
    ════════════════════════════════════════════════ */
-let currentLink = '';
-let currentData = null;
-
-/* ════════════════════════════════════════════════
-   Generate
-   ════════════════════════════════════════════════ */
-function generate() {
-  const data = getFormData();
-  if (!data) return;
-  currentData = data;
-
-  const raw  = buildPayload(data);
-  const link = 'https://bank.gov.ua/qr/' + toBase64URL(encodeWin1251(raw));
-  currentLink = link;
-
-  document.getElementById('raw-text').textContent = raw;
-  document.getElementById('dl-text').textContent  = link;
-  document.getElementById('result-placeholder').style.display = 'none';
-  document.getElementById('result-content').style.display     = 'block';
-
-  const container = document.getElementById('qr-container');
-  container.innerHTML = '';
-  /* global QRCode */
-  new QRCode(container, {
-    text:           link,
-    width:          230,
-    height:         230,
-    colorDark:      '#002B26',
-    colorLight:     '#FFFFFF',
-    correctLevel:   QRCode.CorrectLevel.H,
-  });
-  
-  if (data.currency === 'UAH') {
-     requestAnimationFrame(() => overlayHryvnia(container));
-  }  
-
-  recordEntry(data);
-}
-
-/* ════════════════════════════════════════════════
-   Copy deeplink
-   ════════════════════════════════════════════════ */
-function copyLink() {
-  if (!currentLink) return;
-
-  const btn  = document.getElementById('btn-copy');
-  const span = document.getElementById('btn-copy-text');
-
-  navigator.clipboard.writeText(currentLink)
-    .then(() => {
-      btn.classList.add('copied');
-      span.textContent = 'Скопійовано!';
-      setTimeout(() => {
-        btn.classList.remove('copied');
-        span.textContent = 'Копіювати посилання';
-      }, 2200);
-    })
-    .catch(() => {
-      prompt('Скопіюйте посилання вручну:', currentLink);
-    });
-}
-
 function overlayHryvnia(container) {
   const canvas = container.querySelector('canvas');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const size = canvas.width;
+  const ctx    = canvas.getContext('2d');
+  const size   = canvas.width;
   const radius = Math.round(size * 0.11);
-  const cx = Math.round(size / 2);
-  const cy = Math.round(size / 2);
+  const cx     = Math.round(size / 2);
+  const cy     = Math.round(size / 2);
 
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,.18)';
@@ -317,6 +191,79 @@ function overlayHryvnia(container) {
 }
 
 /* ════════════════════════════════════════════════
+   State
+   ════════════════════════════════════════════════ */
+let currentLink = '';
+let currentData = null;
+
+/* ════════════════════════════════════════════════
+   Render QR from a link (used by URL param restore)
+   ════════════════════════════════════════════════ */
+function renderQR(link, data) {
+  currentLink = link;
+  currentData = data;
+
+  document.getElementById('dl-text').textContent = link;
+  document.getElementById('result-placeholder').style.display = 'none';
+  document.getElementById('result-content').style.display     = 'block';
+
+  const container = document.getElementById('qr-container');
+  container.innerHTML = '';
+  /* global QRCode */
+  new QRCode(container, {
+    text:         link,
+    width:        230,
+    height:       230,
+    colorDark:    '#002B26',
+    colorLight:   '#FFFFFF',
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  if (!data.amountField || data.currency === 'UAH') {
+    requestAnimationFrame(() => overlayHryvnia(container));
+  }
+}
+
+/* ════════════════════════════════════════════════
+   Generate
+   ════════════════════════════════════════════════ */
+function generate() {
+  const data = getFormData();
+  if (!data) return;
+
+  const raw  = buildPayload(data);
+  document.getElementById('raw-text').textContent = raw;
+
+  const link = 'https://bank.gov.ua/qr/' + toBase64URL(encodeWin1251(raw));
+  renderQR(link, data);
+
+  // Save to storage (uses storage.js)
+  upsertGeneration({ ...data, link });
+  renderRecents();
+}
+
+/* ════════════════════════════════════════════════
+   Copy deeplink
+   ════════════════════════════════════════════════ */
+function copyLink() {
+  if (!currentLink) return;
+  navigator.clipboard.writeText(currentLink)
+    .then(() => {
+      const btn  = document.getElementById('btn-copy');
+      const span = document.getElementById('btn-copy-text');
+      btn.classList.add('copied');
+      span.textContent = 'Скопійовано!';
+      document.querySelector('#btn-copy-icon use').setAttribute('href', 'icons.svg#ic-check');
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        span.textContent = 'Копіювати посилання';
+        document.querySelector('#btn-copy-icon use').setAttribute('href', 'icons.svg#ic-copy');
+      }, 2200);
+    })
+    .catch(() => prompt('Скопіюйте посилання вручну:', currentLink));
+}
+
+/* ════════════════════════════════════════════════
    Download QR PNG
    ════════════════════════════════════════════════ */
 function downloadQR() {
@@ -329,40 +276,22 @@ function downloadQR() {
 }
 
 /* ════════════════════════════════════════════════
-   Download static HTML page (self-contained)
+   Download static HTML page
    ════════════════════════════════════════════════ */
 function downloadPage() {
   if (!currentLink || !currentData) return;
-
   const canvas = document.querySelector('#qr-container canvas');
   if (!canvas) { alert('Спочатку згенеруйте QR-код'); return; }
 
+  const d         = currentData;
   const qrDataUrl = canvas.toDataURL('image/png');
-  const d = currentData;
-
   const amountRow = d.amount > 0
     ? `<tr><td class="lbl">Сума</td><td class="val amount">${esc(d.currency)}&nbsp;${d.amount.toFixed(2)}</td></tr>`
     : '';
 
-  const html = buildStaticPage({ d, qrDataUrl, amountRow });
+  const shortLink = currentLink.length > 72 ? currentLink.slice(0, 72) + '…' : currentLink;
 
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const a = document.createElement('a');
-  a.download = `payment-${d.iban.slice(-8)}.html`;
-  a.href = URL.createObjectURL(blob);
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-/* ════════════════════════════════════════════════
-   Static page template (single self-contained file)
-   ════════════════════════════════════════════════ */
-function buildStaticPage({ d, qrDataUrl, amountRow }) {
-  const shortLink = currentLink.length > 72
-    ? currentLink.slice(0, 72) + '…'
-    : currentLink;
-
-  return `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
@@ -387,19 +316,16 @@ tr:not(:last-child) td{border-bottom:1px solid #EEF0ED}
 .purpose{background:#F3FAF9;border-left:3px solid #7EC5BB;border-radius:0 8px 8px 0;padding:10px 14px;text-align:left;font-size:13px;color:#1A4A44;margin-bottom:22px;line-height:1.55}
 .hint{font-size:13px;color:#6A8A87;margin-bottom:14px;line-height:1.5}
 .btn{display:block;width:100%;padding:14px;background:#007B6E;color:#fff;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:10px}
-.btn:hover{background:#005F55}
 .btn-sec{display:block;width:100%;padding:11px;background:#E6F4F2;color:#005F55;border:1.5px solid #B2D8D3;border-radius:10px;font-size:11px;font-weight:500;text-decoration:none;font-family:monospace;word-break:break-all;line-height:1.5}
 .footer{margin-top:22px;font-size:10.5px;color:#ccc}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="stamp">&#10003;&nbsp;Переказ на банкіський рахунок (за стандартом НБУ BCD 002)</div>
+  <div class="stamp">&#10003;&nbsp;Платіж на банківський рахунок</div>
   <h1>${esc(d.name)}</h1>
   <p class="code">ЄДРПОУ / ІПН: ${esc(d.edrpou)}</p>
-  <div class="qr-wrap">
-    <img src="${qrDataUrl}" width="200" height="200" alt="QR-код для оплати">
-  </div>
+  <div class="qr-wrap"><img src="${qrDataUrl}" width="200" height="200" alt="QR-код для оплати"></div>
   <table>
     <tr><td class="lbl">Рахунок</td><td class="val iban">${esc(d.iban)}</td></tr>
     ${amountRow}
@@ -412,23 +338,88 @@ tr:not(:last-child) td{border-bottom:1px solid #EEF0ED}
 </div>
 </body>
 </html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.download = `payment-${d.iban.slice(-8)}.html`;
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 /* ════════════════════════════════════════════════
-   Event listeners
+   Restore from URL params  (?rid=...&gid=...)
+   Called when user clicks a generation in recipients page
+   ════════════════════════════════════════════════ */
+function restoreFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const rid = params.get('rid');
+  const gid = params.get('gid');
+  if (!rid || !gid) return;
+
+  const recipient = getRecipientById(rid); // storage.js
+  if (!recipient) return;
+
+  const gen = recipient.generations.find(g => g.id === gid);
+  if (!gen) return;
+
+  // Fill form
+  document.getElementById('f-name').value    = recipient.name    || '';
+  document.getElementById('f-iban').value    = recipient.iban    || '';
+  document.getElementById('f-edrpou').value  = recipient.edrpou  || '';
+  document.getElementById('f-purpose').value = gen.purpose || '';
+  document.getElementById('f-currency').value = gen.currency || 'UAH';
+  document.getElementById('f-amount').value  = gen.amount > 0 ? gen.amount : '';
+  document.getElementById('f-email').value   = recipient.email || '';
+  document.getElementById('f-phone').value   = recipient.phone || '';
+  document.getElementById('f-tg').value      = recipient.tg    || '';
+
+  if (recipient.email || recipient.phone || recipient.tg) openOptional();
+
+  const raw = buildPayload({
+    name: recipient.name, iban: recipient.iban, edrpou: recipient.edrpou,
+    purpose: gen.purpose, amountField: gen.amountField || '',
+  });
+  document.getElementById('raw-text').textContent = raw;
+
+  // Render QR from stored link
+  renderQR(gen.link, {
+    name: recipient.name, iban: recipient.iban, edrpou: recipient.edrpou,
+    purpose: gen.purpose, currency: gen.currency, amount: gen.amount,
+    amountField: gen.amountField, email: recipient.email,
+    phone: recipient.phone, tg: recipient.tg,
+  });
+
+  // Validate fields visually
+  const ibanRes = validateIBAN(recipient.iban);
+  setFieldState('f-iban', 'status-iban', 'msg-iban', ibanRes.ok ? 'ok' : 'clear', ibanRes.ok ? ibanRes.msg : '');
+  const codeRes = validateCode(recipient.edrpou);
+  setFieldState('f-edrpou', 'status-edrpou', 'msg-edrpou', codeRes.ok ? 'ok' : 'clear', codeRes.ok ? codeRes.msg : '');
+
+  // Clean URL
+  window.history.replaceState({}, '', 'index.html');
+
+  // Scroll to result
+  document.getElementById('result-content').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ════════════════════════════════════════════════
+   Init
    ════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   initBanner();
+  initNav();
+  initOptionalToggle();
   renderRecents();
+  restoreFromURL();
 
   document.getElementById('btn-generate').addEventListener('click', generate);
   document.getElementById('btn-copy').addEventListener('click', copyLink);
   document.getElementById('btn-dl-png').addEventListener('click', downloadQR);
   document.getElementById('btn-dl-page').addEventListener('click', downloadPage);
 
-  // Live IBAN format cleanup
   document.getElementById('f-iban').addEventListener('input', function () {
-    this.classList.remove('error');
-    document.getElementById('err-iban').classList.remove('visible');
+    setFieldState('f-iban', 'status-iban', 'msg-iban', 'clear', '');
+    this.classList.remove('field-error');
   });
 });

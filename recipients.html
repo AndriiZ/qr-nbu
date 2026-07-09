@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Отримувачі — Генератор QR НБУ</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="storage.js" defer></script>
+  <script src="recipients.js" defer></script>
+</head>
+<body>
+
+  <!-- Hamburger nav overlay -->
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <nav class="nav-drawer" id="nav-drawer" aria-label="Навігація">
+    <div class="nav-header">Меню</div>
+    <a href="index.html" class="nav-item">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-home"/></svg>
+      Генератор QR
+    </a>
+    <a href="recipients.html" class="nav-item nav-item--active">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-users"/></svg>
+      Отримувачі
+    </a>
+  </nav>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="nbu-logo" aria-hidden="true">НБУ</div>
+      <div>
+        <div class="topbar-title">Отримувачі</div>
+        <div class="topbar-sub" id="recipients-count">Завантаження…</div>
+      </div>
+      <button class="hamburger" id="hamburger-btn" aria-label="Меню" aria-expanded="false">
+        <svg class="icon icon--lg" aria-hidden="true"><use href="icons.svg#ic-menu"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <main class="main">
+
+    <!-- Toolbar -->
+    <div class="r-toolbar">
+      <div class="r-toolbar-top">
+        <div class="search-wrap">
+          <svg class="icon search-icon" aria-hidden="true"><use href="icons.svg#ic-search"/></svg>
+          <input type="search" id="r-search" placeholder="Пошук по імені, IBAN, контакту, сумі…" autocomplete="off">
+        </div>
+      </div>
+      <div class="r-toolbar-bottom">
+        <div class="sort-group">
+          <span class="sort-label">Сортування:</span>
+          <button class="sort-btn sort-btn--active" id="sort-date" data-sort="date">За датою</button>
+          <button class="sort-btn" id="sort-count" data-sort="count">За кількістю</button>
+        </div>
+        <div class="r-actions">
+          <button class="btn-action" id="btn-import" title="Імпорт ZIP JSON">
+            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-upload"/></svg>
+            Імпорт
+          </button>
+          <button class="btn-action" id="btn-export" title="Повний експорт ZIP JSON">
+            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-download"/></svg>
+            Експорт ZIP
+          </button>
+          <button class="btn-action" id="btn-export-nocontacts" title="Експорт без контактних даних">
+            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-download"/></svg>
+            Без контактів
+          </button>
+          <input type="file" id="import-input" accept=".zip,.json" hidden>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recipients list -->
+    <div id="recipients-list"></div>
+
+    <!-- Load more -->
+    <div id="load-more-wrap" hidden style="text-align:center;margin-top:16px">
+      <button class="btn-load-more" id="btn-load-more">
+        Завантажити ще <span id="load-more-count"></span>
+      </button>
+    </div>
+
+    <!-- No results -->
+    <div class="no-results" id="no-results" hidden>
+      <p>Нічого не знайдено за вашим запитом.</p>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state" hidden>
+      <svg class="icon icon--empty" aria-hidden="true"><use href="icons.svg#ic-users"/></svg>
+      <p>Ще немає отримувачів.<br>Згенеруйте перший QR-код на головній сторінці.</p>
+      <a href="index.html" class="btn-generate" style="display:inline-flex;width:auto;padding:10px 20px;margin-top:16px;text-decoration:none">
+        <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+        Перейти до генератора
+      </a>
+    </div>
+
+  </main>
+
+</body>
+</html>

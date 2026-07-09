@@ -6,10 +6,26 @@
   <title>Генератор QR-коду НБУ</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="encoding.js" defer></script>
+  <script src="storage.js"  defer></script>
   <script src="validate.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="app.js"      defer></script>
 </head>
 <body>
+
+  <!-- Hamburger nav overlay -->
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <nav class="nav-drawer" id="nav-drawer" aria-label="Навігація">
+    <div class="nav-header">Меню</div>
+    <a href="index.html" class="nav-item nav-item--active">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-home"/></svg>
+      Генератор QR
+    </a>
+    <a href="recipients.html" class="nav-item">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-users"/></svg>
+      Отримувачі
+    </a>
+  </nav>
 
   <!-- Privacy banner -->
   <div id="privacy-banner">
@@ -29,8 +45,11 @@
       <div class="nbu-logo" aria-hidden="true">НБУ</div>
       <div>
         <div class="topbar-title">Генератор QR-коду платежу</div>
-        <div class="topbar-sub">Переказ на банкіський рахунок (за стандартом НБУ BCD 002)</div>
+        <div class="topbar-sub">Платіж на банківський рахунок · стандарт НБУ BCD 002</div>
       </div>
+      <button class="hamburger" id="hamburger-btn" aria-label="Меню" aria-expanded="false">
+        <svg class="icon icon--lg" aria-hidden="true"><use href="icons.svg#ic-menu"/></svg>
+      </button>
     </div>
   </div>
 
@@ -64,21 +83,20 @@
         <div class="field">
           <label for="f-iban">IBAN<span class="req" aria-hidden="true">*</span></label>
           <div class="input-wrap">
-            <input type="text" id="f-iban" placeholder="UA213996220000026007233566001"
-                   maxlength="40" autocomplete="off" spellcheck="false">
-            <span class="field-status" id="status-iban" aria-live="polite"></span>
+            <input type="text" id="f-iban" placeholder="UA21 3996 2200 0002 6007 2335 66001" maxlength="38" autocomplete="off" spellcheck="false">
+            <span class="field-status" id="status-iban"></span>
           </div>
+          <p class="hint">29 символів: UA + 27 цифр. Пробіли та дефіси допустимі.</p>
           <p class="field-msg" id="msg-iban"></p>
         </div>
 
         <div class="field">
-          <label for="f-edrpou">
-            Код ЄДРПОУ / ІПН / паспорт<span class="req" aria-hidden="true">*</span>
-          </label>
+          <label for="f-edrpou">Код ЄДРПОУ / ІПН<span class="req" aria-hidden="true">*</span></label>
           <div class="input-wrap">
-            <input type="text" id="f-edrpou" placeholder="ЄДРПОУ (8), ІПН (10) або паспорт" autocomplete="off">
-            <span class="field-status" id="status-edrpou" aria-live="polite"></span>
+            <input type="text" id="f-edrpou" placeholder="44325463" autocomplete="off">
+            <span class="field-status" id="status-edrpou"></span>
           </div>
+          <p class="hint">ЄДРПОУ (8 цифр), РНОКПП/ІПН (10 цифр) або серія і номер паспорта</p>
           <p class="field-msg" id="msg-edrpou"></p>
         </div>
 
@@ -93,6 +111,37 @@
             <input type="number" id="f-amount" placeholder="0.00" min="0" step="0.01">
           </div>
           <p class="hint">Залиште порожнім — платник вкаже суму самостійно</p>
+        </div>
+
+        <!-- Optional contact fields -->
+        <div class="optional-fields-toggle">
+          <button class="btn-toggle-optional" id="btn-toggle-optional">
+            <svg class="icon icon--chevron" aria-hidden="true"><use href="icons.svg#ic-chevron-down"/></svg>
+            Контактні дані <span class="opt">необов'язково</span>
+          </button>
+        </div>
+        <div class="optional-fields" id="optional-fields">
+          <div class="field">
+            <label for="f-email">Email</label>
+            <div class="input-wrap">
+              <svg class="icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"><use href="icons.svg#ic-mail"/></svg>
+              <input type="email" id="f-email" placeholder="info@example.com" style="padding-left:32px" autocomplete="email">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-phone">Телефон</label>
+            <div class="input-wrap">
+              <svg class="icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"><use href="icons.svg#ic-phone"/></svg>
+              <input type="tel" id="f-phone" placeholder="+380991234567" style="padding-left:32px" autocomplete="tel">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-tg">Telegram</label>
+            <div class="input-wrap">
+              <svg class="icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"><use href="icons.svg#ic-telegram"/></svg>
+              <input type="text" id="f-tg" placeholder="@username" style="padding-left:32px" autocomplete="off">
+            </div>
+          </div>
         </div>
 
         <div class="sect" style="margin-top: 18px;">

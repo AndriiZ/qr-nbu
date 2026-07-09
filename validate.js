@@ -1,9 +1,5 @@
 'use strict';
 
-/* ════════════════════════════════════════════════
-   IBAN — MOD-97 (ISO 13616)
-   ════════════════════════════════════════════════ */
-
 function validateIBAN(raw) {
   const iban = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
