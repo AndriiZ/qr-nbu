@@ -34,7 +34,12 @@ function highlight(text, query) {
   if (!query) return esc(text);
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`(${escaped})`, 'gi');
-  return esc(text).replace(re, '<mark>$1</mark>');
+  // Split the RAW text first, then escape each part — otherwise a query
+  // like "amp" could match inside "&amp;" and produce broken markup.
+  return String(text || '')
+    .split(re)
+    .map((part, i) => (i % 2 === 1 ? `<mark>${esc(part)}</mark>` : esc(part)))
+    .join('');
 }
 
 /* ── Sort ── */
@@ -67,10 +72,10 @@ function filteredRecipients() {
 /* ════════════════════════════════════════════════
    Render helpers
    ════════════════════════════════════════════════ */
-function renderOptional(value, iconId) {
+function renderOptional(value, tiClass) {
   if (!value) return '';
   return `<span class="r-meta-item">
-    <svg class="icon" aria-hidden="true"><use href="icons.svg#${esc(iconId)}"/></svg>
+    <i class="ti ${esc(tiClass)} icon" aria-hidden="true"></i>
     ${highlight(value, searchQuery)}
   </span>`;
 }
@@ -82,7 +87,7 @@ function renderGeneration(g, recipientId) {
   return `
   <div class="gen-row">
     <button class="gen-ts" data-rid="${esc(recipientId)}" data-gid="${esc(g.id)}" title="Відкрити QR на головній">
-      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-external"/></svg>
+      <i class="ti ti-external-link icon" aria-hidden="true"></i>
       ${esc(formatDate(g.timestamp))}
     </button>
     <span class="gen-purpose">${esc(g.purpose)}</span>
@@ -105,22 +110,22 @@ function renderRecipient(r) {
         <div class="r-iban">${highlight(ibanShort, searchQuery)}</div>
         <div class="r-meta">
           <span class="r-meta-item">
-            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-clock"/></svg>
+            <i class="ti ti-clock icon" aria-hidden="true"></i>
             ${esc(lastUsedStr)}
           </span>
           <span class="r-badge">${r.count || 0} дн.</span>
           <span class="r-badge r-badge--gen">${gens.length} QR</span>
-          ${renderOptional(r.email, 'ic-mail')}
-          ${renderOptional(r.phone, 'ic-phone')}
-          ${renderOptional(r.tg,    'ic-telegram')}
+          ${renderOptional(r.email, 'ti-mail')}
+          ${renderOptional(r.phone, 'ti-phone')}
+          ${renderOptional(r.tg,    'ti-brand-telegram')}
         </div>
       </div>
       <div class="r-card-actions">
         <button class="btn-expand" data-rid="${esc(r.id)}" aria-expanded="false" title="Показати генерації">
-          <svg class="icon icon--chevron" aria-hidden="true"><use href="icons.svg#ic-chevron-down"/></svg>
+          <i class="ti ti-chevron-down icon icon--chevron" aria-hidden="true"></i>
         </button>
         <button class="btn-delete" data-rid="${esc(r.id)}" title="Видалити отримувача">
-          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-trash"/></svg>
+          <i class="ti ti-trash icon" aria-hidden="true"></i>
         </button>
       </div>
     </div>
@@ -294,7 +299,7 @@ async function buildZip(jsonStr, suffix = '') {
   a.download = `nbu-qr-recipients${suffix}-${new Date().toISOString().slice(0, 10)}.zip`;
   a.href = URL.createObjectURL(blob);
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 async function exportZip()           { await buildZip(exportJSON()); }

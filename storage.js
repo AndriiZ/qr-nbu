@@ -55,9 +55,11 @@ function upsertGeneration(data) {
   } else {
     recipient.name   = name;
     recipient.edrpou = edrpou;
-    if (email  !== undefined) recipient.email  = email  || '';
-    if (phone  !== undefined) recipient.phone  = phone  || '';
-    if (tg     !== undefined) recipient.tg     = tg     || '';
+    // Only overwrite contacts with non-empty values — otherwise generating
+    // a QR without opening the optional panel silently wipes saved contacts.
+    if (email) recipient.email = email;
+    if (phone) recipient.phone = phone;
+    if (tg)    recipient.tg    = tg;
   }
 
   const gen = { id: genId(), purpose, currency, amount, amountField, link, timestamp: Date.now() };
@@ -108,10 +110,13 @@ function importJSON(jsonStr) {
     const idx = list.findIndex(e => e.iban === r.iban);
     if (idx === -1) {
       if (list.length < MAX_RECIPIENTS) {
-        list.push({ ...r, id: r.id || genId() });
+        const rec = { ...r, id: r.id || genId(), generations: r.generations || [] };
+        rec.count = uniqueDayCount(rec.generations);
+        list.push(rec);
       }
     } else {
       // Merge generations (skip duplicates by id)
+      if (!Array.isArray(list[idx].generations)) list[idx].generations = [];
       const existingIds = new Set(list[idx].generations.map(g => g.id));
       (r.generations || []).forEach(g => {
         if (!existingIds.has(g.id)) list[idx].generations.push(g);

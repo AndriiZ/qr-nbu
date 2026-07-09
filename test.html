@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тестові дані — Генератор QR НБУ</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css">
+  <script src="validate.js" defer></script>
+  <script src="test.js" defer></script>
+  <style>
+    /* Page-local styles, built on the app's tokens */
+    .t-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .t-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .t-count { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+    .t-count select {
+      padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius);
+      font-family: inherit; font-size: 13px; background: var(--surface); color: var(--text-1);
+    }
+    .t-out { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .t-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: var(--surface-2, #F4F8F7);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .t-val {
+      flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px; color: var(--text-1); word-break: break-all;
+      user-select: all; cursor: text;
+    }
+    .t-ok  { color: #1A7A3F; font-size: 14px; flex-shrink: 0; }
+    .t-bad { color: #B3261E; font-size: 14px; flex-shrink: 0; }
+    .t-copy {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      border-radius: 6px; color: var(--text-3); display: inline-flex; flex-shrink: 0;
+    }
+    .t-copy:hover { background: var(--teal-light); color: var(--teal-dark); }
+    .t-copy.done { color: #1A7A3F; }
+    .t-empty { font-size: 13px; color: var(--text-3); padding: 8px 2px; }
+    .t-note {
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 12px; color: var(--text-2); line-height: 1.5;
+      background: var(--teal-light); border: 1px solid var(--teal-mid);
+      border-radius: var(--radius); padding: 10px 12px; margin-bottom: 16px;
+    }
+    .t-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--teal); text-decoration: none; margin-bottom: 14px; }
+    .t-back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-brand">
+        <div class="nbu-logo" aria-hidden="true">НБУ</div>
+        <div>
+          <div class="topbar-title">Тестові дані</div>
+          <div class="topbar-sub">Синтетичні IBAN та ЄДРПОУ/ІПН з коректними контрольними сумами</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main">
+
+    <a href="index.html" class="t-back">
+      <i class="ti ti-arrow-left icon" aria-hidden="true"></i>
+      До генератора QR
+    </a>
+
+    <div class="t-note">
+      <i class="ti ti-flask icon" aria-hidden="true"></i>
+      <span>Усі значення згенеровані випадково і призначені лише для тестування.
+      Контрольні суми коректні, але це <strong>не реальні рахунки чи коди</strong> —
+      збіг із чинними реквізитами випадковий. Кожне значення перевіряється тим самим
+      <code>validate.js</code>, що й основна форма (позначка ✓).</span>
+    </div>
+
+    <div class="t-controls">
+      <button class="btn-generate" id="btn-gen-all" style="width:auto;padding:10px 18px">
+        <i class="ti ti-refresh icon" aria-hidden="true"></i>
+        Згенерувати все
+      </button>
+      <label class="t-count">
+        Кількість:
+        <select id="t-count">
+          <option value="1">1</option>
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+          <option value="25">25</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="t-grid">
+
+      <div class="card">
+        <div class="sect">
+          <i class="ti ti-building-bank icon" aria-hidden="true"></i>
+          IBAN (UA)
+        </div>
+        <p class="hint" style="margin-bottom:10px">UA + 2 контрольні цифри (MOD-97) + МФО реального банку + 19 цифр рахунку</p>
+        <button class="btn-copy" id="btn-gen-iban">
+          <i class="ti ti-refresh icon" aria-hidden="true"></i>&nbsp;Згенерувати IBAN
+        </button>
+        <div class="t-out" id="out-iban"><div class="t-empty">Натисніть «Згенерувати»</div></div>
+      </div>
+
+      <div class="card">
+        <div class="sect">
+          <i class="ti ti-building icon" aria-hidden="true"></i>
+          ЄДРПОУ (8 цифр)
+        </div>
+        <p class="hint" style="margin-bottom:10px">Код юридичної особи з контрольною сумою mod 11</p>
+        <button class="btn-copy" id="btn-gen-edrpou">
+          <i class="ti ti-refresh icon" aria-hidden="true"></i>&nbsp;Згенерувати ЄДРПОУ
+        </button>
+        <div class="t-out" id="out-edrpou"><div class="t-empty">Натисніть «Згенерувати»</div></div>
+      </div>
+
+      <div class="card">
+        <div class="sect">
+          <i class="ti ti-user icon" aria-hidden="true"></i>
+          ІПН / РНОКПП (10 цифр)
+        </div>
+        <p class="hint" style="margin-bottom:10px">Перші 5 цифр кодують правдоподібну дату народження, остання — контрольна</p>
+        <button class="btn-copy" id="btn-gen-ipn">
+          <i class="ti ti-refresh icon" aria-hidden="true"></i>&nbsp;Згенерувати ІПН
+        </button>
+        <div class="t-out" id="out-ipn"><div class="t-empty">Натисніть «Згенерувати»</div></div>
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>

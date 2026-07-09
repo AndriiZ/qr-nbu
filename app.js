@@ -230,13 +230,7 @@ function renderQR(link, data) {
   const email = data.email || '';
   if (email) {
     const subject = encodeURIComponent('Реквізити для оплати — ' + data.name);
-    const body = encodeURIComponent(
-      'Отримувач: ' + data.name + '\n' +
-      'IBAN: '      + data.iban + '\n' +
-      (data.amountField ? 'Сума: ' + data.amountField + '\n' : '') +
-      'Призначення: ' + data.purpose + '\n\n' +
-      'Посилання для оплати:\n' + link
-    );
+    const body = encodeURIComponent(buildPlainText(data, link));
     emailBtn.href = `mailto:${email}?subject=${subject}&body=${body}`;
     emailBtn.hidden = false;
   } else {
@@ -281,6 +275,113 @@ function copyLink() {
       }, 2200);
     })
     .catch(() => prompt('Скопіюйте посилання вручну:', currentLink));
+}
+
+/* ════════════════════════════════════════════════
+   Copy HTML for email  (rich text/html + text/plain fallback)
+   ════════════════════════════════════════════════ */
+function buildPlainText(d, link) {
+  return 'Отримувач: ' + d.name + '\n' +
+    'ЄДРПОУ / ІПН: ' + d.edrpou + '\n' +
+    'IBAN: ' + d.iban + '\n' +
+    (d.amountField ? 'Сума: ' + d.amountField + '\n' : '') +
+    'Призначення: ' + d.purpose + '\n\n' +
+    'Посилання для оплати:\n' + link;
+}
+
+/* Email-client-safe fragment: single table, inline styles only,
+   QR image wrapped in a link so it is tappable on mobile. */
+function buildEmailHTML(d, link, qrDataUrl) {
+  const cellLbl = 'padding:6px 8px 6px 0;font-size:12px;color:#9AABA7;vertical-align:top;white-space:nowrap';
+  const cellVal = 'padding:6px 0;font-size:13px;color:#1A2826;word-break:break-all';
+  const amountRow = d.amount > 0
+    ? `<tr><td style="${cellLbl}">Сума</td><td style="${cellVal};color:#007B6E;font-size:16px;font-weight:bold">${esc(d.currency)}&nbsp;${d.amount.toFixed(2)}</td></tr>`
+    : '';
+
+  return `<table cellpadding="0" cellspacing="0" border="0" style="max-width:460px;width:100%;font-family:Arial,Helvetica,sans-serif;background:#FFFFFF;border:1px solid #D4E5E2;border-radius:12px">
+<tr><td style="padding:24px;text-align:center">
+  <div style="font-size:16px;font-weight:bold;color:#111111;margin-bottom:2px">${esc(d.name)}</div>
+  <div style="font-size:12px;color:#999999;margin-bottom:16px">ЄДРПОУ / ІПН: ${esc(d.edrpou)}</div>
+  <a href="${esc(link)}" target="_blank" style="display:inline-block;padding:10px;border:1px solid #D4E5E2;border-radius:10px;text-decoration:none">
+    <img src="${qrDataUrl}" width="180" height="180" alt="QR-код для оплати — натисніть, щоб оплатити" style="display:block;border:0">
+  </a>
+  <div style="font-size:11px;color:#6A8A87;margin:8px 0 16px">Відскануйте QR або натисніть на нього на телефоні</div>
+  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;text-align:left">
+    <tr><td style="${cellLbl}">Рахунок</td><td style="${cellVal};font-family:monospace;font-size:12px">${esc(d.iban)}</td></tr>
+    ${amountRow}
+    <tr><td style="${cellLbl}">Призначення</td><td style="${cellVal}">${esc(d.purpose)}</td></tr>
+  </table>
+  <a href="${esc(link)}" target="_blank" style="display:block;margin-top:16px;padding:12px;background:#007B6E;color:#FFFFFF;border-radius:8px;font-size:14px;font-weight:bold;text-decoration:none;text-align:center">Оплатити</a>
+</td></tr>
+</table>`;
+}
+
+/* Legacy fallback: hidden contenteditable + execCommand('copy')
+   copies rich HTML even without the async Clipboard API (e.g. file://). */
+function execCopyHTML(html) {
+  const div = document.createElement('div');
+  div.contentEditable = 'true';
+  div.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  div.innerHTML = html;
+  document.body.appendChild(div);
+  const range = document.createRange();
+  range.selectNodeContents(div);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  sel.removeAllRanges();
+  div.remove();
+  return ok;
+}
+
+function copyHtmlFeedback(ok) {
+  const btn  = document.getElementById('btn-copy-html');
+  const span = document.getElementById('btn-copy-html-text');
+  const icon = document.getElementById('btn-copy-html-icon');
+  btn.classList.add('copied');
+  span.textContent = ok ? 'Скопійовано! Вставте в лист' : 'Скопійовано як текст';
+  icon.className = 'ti ti-check icon';
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    span.textContent = 'Копіювати HTML для листа';
+    icon.className = 'ti ti-mail-share icon';
+  }, 2200);
+}
+
+async function copyHTMLEmail() {
+  if (!currentLink || !currentData) return;
+  const canvas = document.querySelector('#qr-container canvas');
+  if (!canvas) { alert('Спочатку згенеруйте QR-код'); return; }
+
+  const html = buildEmailHTML(currentData, currentLink, canvas.toDataURL('image/png'));
+  const text = buildPlainText(currentData, currentLink);
+
+  // 1) Async Clipboard API — rich HTML + plain-text fallback in one item
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html':  new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+        }),
+      ]);
+      copyHtmlFeedback(true);
+      return;
+    } catch { /* fall through */ }
+  }
+
+  // 2) execCommand copies rich HTML in older/insecure contexts
+  if (execCopyHTML(html)) { copyHtmlFeedback(true); return; }
+
+  // 3) Last resort — plain text only
+  try {
+    await navigator.clipboard.writeText(text);
+    copyHtmlFeedback(false);
+  } catch {
+    prompt('Скопіюйте вручну:', text);
+  }
 }
 
 /* ════════════════════════════════════════════════
@@ -345,7 +446,7 @@ tr:not(:last-child) td{border-bottom:1px solid #EEF0ED}
   <div class="stamp">&#10003;&nbsp;Платіж на банківський рахунок</div>
   <h1>${esc(d.name)}</h1>
   <p class="code">ЄДРПОУ / ІПН: ${esc(d.edrpou)}</p>
-  <div class="qr-wrap"><img src="${qrDataUrl}" width="200" height="200" alt="QR-код для оплати"></div>
+  <div class="qr-wrap"><a href="${esc(currentLink)}"><img src="${qrDataUrl}" width="200" height="200" alt="QR-код для оплати — натисніть, щоб оплатити"></a></div>
   <table>
     <tr><td class="lbl">Рахунок</td><td class="val iban">${esc(d.iban)}</td></tr>
     ${amountRow}
@@ -416,8 +517,8 @@ function restoreFromURL() {
   const codeRes = validateCode(recipient.edrpou);
   setFieldState('f-edrpou', 'status-edrpou', 'msg-edrpou', codeRes.ok ? 'ok' : 'clear', codeRes.ok ? codeRes.msg : '');
 
-  // Clean URL
-  window.history.replaceState({}, '', 'index.html');
+  // Clean URL (replaceState with a URL throws SecurityError on file://)
+  try { window.history.replaceState({}, '', 'index.html'); } catch { /* ok */ }
 
   // Scroll to result
   document.getElementById('result-content').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -435,6 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-generate').addEventListener('click', generate);
   document.getElementById('btn-copy').addEventListener('click', copyLink);
+  document.getElementById('btn-copy-html').addEventListener('click', copyHTMLEmail);
   document.getElementById('btn-dl-png').addEventListener('click', downloadQR);
   document.getElementById('btn-dl-page').addEventListener('click', downloadPage);
 
