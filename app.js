@@ -253,11 +253,11 @@ function copyLink() {
       const span = document.getElementById('btn-copy-text');
       btn.classList.add('copied');
       span.textContent = 'Скопійовано!';
-      document.querySelector('#btn-copy-icon use').setAttribute('href', 'icons.svg#ic-check');
+      document.getElementById('btn-copy-icon').className = 'ti ti-check icon';
       setTimeout(() => {
         btn.classList.remove('copied');
         span.textContent = 'Копіювати посилання';
-        document.querySelector('#btn-copy-icon use').setAttribute('href', 'icons.svg#ic-copy');
+        document.getElementById('btn-copy-icon').className = 'ti ti-copy icon';
       }, 2200);
     })
     .catch(() => prompt('Скопіюйте посилання вручну:', currentLink));

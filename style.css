@@ -37,33 +37,27 @@ body {
 }
 
 
-/* ── Icons ─────────────────────────────────────────────────────────── */
+/* ── Icons (Tabler webfont) ─────────────────────────────────────────── */
 .icon {
-  width: 14px;
-  height: 14px;
+  font-size: 15px;
+  line-height: 1;
   flex-shrink: 0;
-  display: inline-block;
-  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
 }
 
-
-.banner-inner .icon  { width: 18px; height: 18px; color: var(--warn-text); }
-.btn-generate .icon  { width: 18px; height: 18px; }
+.banner-inner .icon  { font-size: 18px; color: var(--warn-text); }
+.btn-generate .icon  { font-size: 18px; }
 
 .icon--placeholder {
-  width: 48px;
-  height: 48px;
+  font-size: 48px;
   opacity: .35;
   display: block;
   margin: 0 auto 12px;
+  text-align: center;
 }
 
-.icon--dl {
-  width: 22px;
-  height: 22px;
-  color: var(--text-3);
-}
-
+.icon--dl   { font-size: 22px; color: var(--text-3); }
 .btn-dl:hover .icon--dl { color: var(--teal); }
 
 /* ── Privacy banner ── */
@@ -919,7 +913,7 @@ input.field-error:focus {
 .btn-expand:hover { background: var(--surface-2); color: var(--teal); border-color: var(--teal-mid); }
 .btn-delete:hover { background: #FDF3F2; color: var(--danger); border-color: #F5C6C2; }
 
-.icon--chevron { transition: transform .2s; }
+.icon--chevron { transition: transform .2s; display: inline-flex; }
 
 /* ── Generation history ── */
 .r-gens {
@@ -989,13 +983,7 @@ input.field-error:focus {
   padding: 60px 20px;
   color: var(--text-3);
 }
-.icon--empty {
-  width: 56px;
-  height: 56px;
-  display: block;
-  margin: 0 auto 16px;
-  opacity: .3;
-}
+.icon--empty { font-size: 56px; display: block; margin: 0 auto 16px; text-align: center; opacity: .3; }
 .empty-state p {
   font-size: 14px;
   line-height: 1.6;
@@ -1005,7 +993,7 @@ input.field-error:focus {
 /* ════════════════════════════════════════════════
    Icon size helpers
    ════════════════════════════════════════════════ */
-.icon--lg { width: 20px; height: 20px; }
+.icon--lg { font-size: 20px; }
 
 /* ════════════════════════════════════════════════
    Optional contact fields (index.html form)
@@ -1028,7 +1016,7 @@ input.field-error:focus {
   transition: color .15s;
 }
 .btn-toggle-optional:hover { color: var(--teal); }
-.btn-toggle-optional .icon--chevron { transition: transform .2s; }
+.btn-toggle-optional .icon--chevron { transition: transform .2s; display: inline-flex; }
 .btn-toggle-optional.open .icon--chevron { transform: rotate(180deg); }
 
 .optional-fields { display: none; }

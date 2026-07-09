@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Генератор QR-коду НБУ</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css">
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="encoding.js" defer></script>
   <script src="storage.js"  defer></script>
@@ -13,16 +15,76 @@
 </head>
 <body>
 
+  <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </symbol>
+
+ fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="3" y1="6"  x2="21" y2="6"/>
+    <line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="18" x2="21" y2="18"/>
+  </symbol>
+
+  <symbol id="ic-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </symbol>
+
+  <symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </symbol>
+
+  <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6"/><path d="M14 11v6"/>
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </symbol>
+
+  <symbol id="ic-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
+  </symbol>
+
+  <symbol id="ic-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
+  </symbol>
+
+  <symbol id="ic-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    <polyline points="15 3 21 3 21 9"/>
+    <line x1="10" y1="14" x2="21" y2="3"/>
+  </symbol>
+
+  <symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22 6 12 13 2 6"/>
+  </symbol>
+
+  <symbol id="ic-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.42 2 2 0 0 1 3.62 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.08 6.08l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </symbol>
+
+  <symbol id="ic-telegram" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.16 14.37l-2.97-.924c-.645-.203-.658-.645.136-.953l11.57-4.461c.537-.194 1.006.131.666.216z"/>
+  </symbol>
+  </svg>
+
   <!-- Hamburger nav overlay -->
   <div class="nav-overlay" id="nav-overlay"></div>
   <nav class="nav-drawer" id="nav-drawer" aria-label="Навігація">
     <div class="nav-header">Меню</div>
     <a href="index.html" class="nav-item nav-item--active">
-      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-home"/></svg>
+      <i class="ti ti-home icon" aria-hidden="true"></i>
       Генератор QR
     </a>
     <a href="recipients.html" class="nav-item">
-      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-users"/></svg>
+      <i class="ti ti-users icon" aria-hidden="true"></i>
       Отримувачі
     </a>
   </nav>
@@ -30,7 +92,7 @@
   <!-- Privacy banner -->
   <div id="privacy-banner">
     <div class="banner-inner">
-      <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-shield"/></svg>
+      <i class="ti ti-shield icon" aria-hidden="true"></i>
       <p class="banner-text">
         <strong>Конфіденційність:</strong> усі дані зберігаються виключно у вашому браузері (localStorage).
         Жодна інформація не передається на сервер і не виходить за межі вашого пристрою.
@@ -50,7 +112,7 @@
         </div>
       </div>
       <button class="hamburger" id="hamburger-btn" aria-label="Меню" aria-expanded="false">
-        <svg class="icon icon--lg" aria-hidden="true"><use href="icons.svg#ic-menu"/></svg>
+        <i class="ti ti-menu-2 icon icon--lg" aria-hidden="true"></i>
       </button>
     </div>
   </div>
@@ -60,7 +122,7 @@
     <!-- Recent IBANs -->
     <div id="recents-wrap" aria-live="polite">
       <div class="recents-label">
-        <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-clock"/></svg>
+        <i class="ti ti-clock icon" aria-hidden="true"></i>
         Нещодавні отримувачі
       </div>
       <div class="recents-chips" id="recents-chips"></div>
@@ -72,7 +134,7 @@
       <div class="card">
 
         <div class="sect">
-          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-bank"/></svg>
+          <i class="ti ti-credit-card icon" aria-hidden="true"></i>
           Реквізити отримувача
         </div>
 
@@ -118,7 +180,7 @@
         <!-- Optional contact fields -->
         <div class="optional-fields-toggle">
           <button class="btn-toggle-optional" id="btn-toggle-optional">
-            <svg class="icon icon--chevron" aria-hidden="true"><use href="icons.svg#ic-chevron-down"/></svg>
+            <i class="ti ti-chevron-down icon icon--chevron" aria-hidden="true"></i>
             Контактні дані <span class="opt">необов'язково</span>
           </button>
         </div>
@@ -126,28 +188,28 @@
           <div class="field">
             <label for="f-email">Email</label>
             <div class="input-wrap">
-              <svg class="icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"><use href="icons.svg#ic-mail"/></svg>
+              <i class="ti ti-mail icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"></i>
               <input type="email" id="f-email" placeholder="info@example.com" style="padding-left:32px" autocomplete="email">
             </div>
           </div>
           <div class="field">
             <label for="f-phone">Телефон</label>
             <div class="input-wrap">
-              <svg class="icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"><use href="icons.svg#ic-phone"/></svg>
+              <i class="ti ti-phone icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"></i>
               <input type="tel" id="f-phone" placeholder="+380991234567" style="padding-left:32px" autocomplete="tel">
             </div>
           </div>
           <div class="field">
             <label for="f-tg">Telegram</label>
             <div class="input-wrap">
-              <svg class="icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"><use href="icons.svg#ic-telegram"/></svg>
+              <i class="ti ti-brand-telegram icon" style="position:absolute;left:10px;color:var(--text-3)" aria-hidden="true"></i>
               <input type="text" id="f-tg" placeholder="@username" style="padding-left:32px" autocomplete="off">
             </div>
           </div>
         </div>
 
         <div class="sect" style="margin-top: 18px;">
-          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-list"/></svg>
+          <i class="ti ti-list icon" aria-hidden="true"></i>
           Призначення платежу
         </div>
 
@@ -157,13 +219,13 @@
         </div>
 
         <button class="btn-generate" id="btn-generate">
-          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+          <i class="ti ti-qrcode icon" aria-hidden="true"></i>
           Згенерувати QR-код
         </button>
 
         <details>
           <summary>
-            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-code"/></svg>
+            <i class="ti ti-code icon" aria-hidden="true"></i>
             Відкриті дані до кодування
           </summary>
           <pre class="raw-pre" id="raw-text">—</pre>
@@ -175,12 +237,12 @@
       <div class="card result-card">
 
         <div class="sect">
-          <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+          <i class="ti ti-qrcode icon" aria-hidden="true"></i>
           Результат
         </div>
 
         <div class="result-placeholder" id="result-placeholder">
-          <svg class="icon icon--placeholder" aria-hidden="true"><use href="icons.svg#ic-qr"/></svg>
+          <i class="ti ti-qrcode icon icon--placeholder" aria-hidden="true"></i>
           <p>Заповніть форму та натисніть<br>«Згенерувати QR-код»</p>
         </div>
 
@@ -192,30 +254,30 @@
 
           <div class="deeplink-box">
             <div class="deeplink-label">
-              <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-link"/></svg>
+              <i class="ti ti-link icon" aria-hidden="true"></i>
               Deeplink / URL
             </div>
             <div class="deeplink-url" id="dl-text"></div>
           </div>
 
           <button class="btn-copy" id="btn-copy">
-            <svg class="icon" id="btn-copy-icon" aria-hidden="true"><use href="icons.svg#ic-copy"/></svg>
+            <i class="ti ti-copy icon" id="btn-copy-icon" aria-hidden="true"></i>
             <span id="btn-copy-text">Копіювати посилання</span>
           </button>
 
           <div class="dl-group-label">
-            <svg class="icon" aria-hidden="true"><use href="icons.svg#ic-download"/></svg>
+            <i class="ti ti-download icon" aria-hidden="true"></i>
             Завантажити
           </div>
 
           <div class="dl-row">
             <button class="btn-dl" id="btn-dl-png">
-              <svg class="icon icon--dl" aria-hidden="true"><use href="icons.svg#ic-image"/></svg>
+              <i class="ti ti-photo icon icon--dl" aria-hidden="true"></i>
               <span class="btn-dl-name">QR-зображення</span>
               <span class="btn-dl-desc">PNG · для друку</span>
             </button>
             <button class="btn-dl" id="btn-dl-page">
-              <svg class="icon icon--dl" aria-hidden="true"><use href="icons.svg#ic-file-html"/></svg>
+              <i class="ti ti-file-code icon icon--dl" aria-hidden="true"></i>
               <span class="btn-dl-name">HTML-сторінка</span>
               <span class="btn-dl-desc">для сайту або email</span>
             </button>
